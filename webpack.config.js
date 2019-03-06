@@ -9,7 +9,6 @@ module.exports =
 	// Where should the compiled file go?
 	output:
 	{
-		path: __dirname + '/docs',
 		filename: '[name].[contenthash].js'
 	},
 	mode: 'development',
