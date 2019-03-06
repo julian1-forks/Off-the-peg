@@ -11,7 +11,7 @@ import DaiPeg from './views/DaiPeg.vue';
 Vue.use(VueRouter);
 
 const routes = [
-	{ path: '/', component: DaiPeg }
+	{ path: '/Off-the-peg', component: DaiPeg }
 ];
 
 const router = new VueRouter({
