@@ -11,10 +11,11 @@ import DaiPeg from './views/DaiPeg.vue';
 Vue.use(VueRouter);
 
 const routes = [
-	{ path: '/Off-the-peg', component: DaiPeg }
+	{ path: '/:quote/:base', component: DaiPeg }
 ];
 
 const router = new VueRouter({
+	base: '/Off-the-peg/',
 	routes
 });
 

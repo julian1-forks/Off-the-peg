@@ -4,6 +4,9 @@
 		</div>
 		<div id="center">
 			<h1>Off the peg</h1>
+			<router-link to="/dai/usd">DAI/USD</router-link>
+			<router-link to="/usdc/usd">USDC/USD</router-link>
+			<router-link to="/dai/usdc">DAI/USDC</router-link>
 			<router-view/>
 		</div>
 		<div id="right">
@@ -22,6 +25,18 @@
 	{
 		font-family: 'Roboto', -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 		font-size: 16px;
+	}
+
+	a
+	{
+		color: black;
+		text-decoration: none;
+		margin-right: 1em;
+	}
+
+	a.router-link-active
+	{
+		text-decoration: underline;
 	}
 
 	#app

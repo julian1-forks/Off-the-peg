@@ -1,17 +1,17 @@
 <template>
 	<div>
 		<div id="peg">
-			<div id="peg-price" class="centered">{{ showPrice(daiUsd) }}</div>
-			<div class="pair centered">DAI/USD</div>
+			<div id="peg-price" class="centered">{{ showPrice(price) }}</div>
+			<div class="pair centered">{{ showPair(base, quote) }} </div>
 		</div>
 		<div id="prices">
 			<div class="pair-price">
-				<div class="pair">ETH/DAI</div>
-				<div>Uniswap: {{ showPrice(uniswapPrice) }}</div>
+				<div class="pair">{{ showPair(quote, 'eth') }}</div>
+				<div>{{ quoteSource }}: {{ showPrice(quotePrice) }}</div>
 			</div>
 			<div class="pair-price">
-				<div class="pair">ETH/USD</div>
-				<div>Coinbase Pro: {{ showPrice(coinbasePrice) }}</div>
+				<div class="pair">{{ showPair(base, 'eth') }}</div>
+				<div>{{ baseSource }}: {{ showPrice(basePrice) }}</div>
 			</div>
 		</div>
 	</div>
@@ -30,23 +30,33 @@
 	export default {
 		data() {
 			return {
-				uniswapPrice: new BigNumber(0),
-				kyberPrice: new BigNumber(0),
-				coinbasePrice: new BigNumber(0)
+				quotePrice: new BigNumber(0),
+				basePrice: new BigNumber(0),
+				quoteSource: '...',
+				baseSource: '...'
 			}
 		},
 		mounted: function() {
 			this.loadPrices();
 		},
+		watch: {
+			$route: function(to, from) {
+				this.quotePrice = new BigNumber(0);
+				this.basePrice = new BigNumber(0);
+				this.quoteSource = '...';
+				this.baseSource = '...';
+				this.loadPrices();
+			}
+		},
 		computed: {
-			ethDai: function() {
-				return this.uniswapPrice;
+			price: function() {
+				return this.basePrice.div(this.quotePrice);
 			},
-			ethUsd: function() {
-				return this.coinbasePrice;
+			base: function() {
+				return this.$route.params.base;
 			},
-			daiUsd: function() {
-				return this.ethUsd.div(this.ethDai);
+			quote: function() {
+				return this.$route.params.quote;
 			}
 		},
 		methods: {
@@ -56,12 +66,22 @@
 				}
 				return price.toFixed(3);
 			},
-			loadPrices: function() {
-				this.loadUniswapPrice();
-				// this.loadKyberPrice();
-				this.loadCoinbasePrice();
+			showPair: function(base, quote) {
+				return `${quote.toUpperCase()}/${base.toUpperCase()}`
 			},
-			loadUniswapPrice: async function() {
+			loadPrices: async function() {
+				if (this.quote == 'dai') {
+					this.quotePrice = await this.loadUniswapPrice(this.quote);
+					this.quoteSource = 'Uniswap';
+				}
+				if (this.quote == 'usdc') {
+					this.quotePrice = await this.loadCoinbasePrice(this.quote);
+					this.quoteSource = 'Coinbase Pro';
+				}
+				this.basePrice = await this.loadCoinbasePrice(this.base);
+				this.baseSource = 'Coinbase Pro';
+			},
+			loadUniswapPrice: async function(token) {
 				const daiAddres = '0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359';
 				const daiExchangeAddress = '0x09cabec1ead1c0ba254b09efb3ee13841712be14';
 				const tokenContract = new ethers.Contract(daiAddres, erc20Abi, provider);
@@ -70,9 +90,9 @@
 				const etherVolume = new BigNumber(etherVolumeString);
 				const tokenVolume = new BigNumber(tokenVolumeString);
 				const price = tokenVolume.div(etherVolume);
-				this.uniswapPrice = price;
+				return price;
 			},
-			loadKyberPrice: async function() {
+			loadKyberPrice: async function(token) {
 				const kyberProxyAddress = '0x818e6fecd516ecc3849daf6845e3ec868087b755';
 				const kyberProxyContract = new ethers.Contract(kyberProxyAddress, kyberProxyAbi, provider);
 				const daiAddres = '0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359';
@@ -83,11 +103,11 @@
 				const ten = new BigNumber(10);
 				const weiMultiplier = ten.pow(18);
 				const price = priceWei.div(weiMultiplier);
-				this.kyberPrice = price;
+				return price;
 			},
-			loadCoinbasePrice: async function() {
+			loadCoinbasePrice: async function(token) {
 				const endpoint = 'https://api.pro.coinbase.com';
-				const url = `${endpoint}/products/ETH-USD/book?level=1`;
+				const url = `${endpoint}/products/ETH-${token}/book?level=1`;
 				const response = await fetch(url);
 				const json = await response.json();
 				const askPriceString = json.asks[0][0];
@@ -95,7 +115,7 @@
 				const askPrice = new BigNumber(askPriceString);
 				const bidPrice = new BigNumber(bidPriceString);
 				const price = askPrice.plus(bidPrice).div(2);
-				this.coinbasePrice = price;
+				return price;
 			}
 		}
 	}
