@@ -11,6 +11,7 @@ import DaiPeg from './views/DaiPeg.vue';
 Vue.use(VueRouter);
 
 const routes = [
+	{ path: '/', redirect: '/dai/usd' },
 	{ path: '/:quote/:base', component: DaiPeg }
 ];
 
