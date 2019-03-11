@@ -110,27 +110,36 @@
 			},
 			loadPrices: async function() {
 				if (this.quote == 'dai') {
-					this.quoteData.push({
-						price: await this.loadUniswapPrice(this.quote),
-						source: 'Uniswap'
-					});
-					this.quoteData.push({
-						price: await this.loadKyberPrice(this.quote),
-						source: 'Kyber'
-					});
-					this.quoteData.push({
-						price: await this.loadOasisPrice(this.quote),
-						source: 'Oasis'
-					});
+					this.addUniswap(this.quoteData, this.quote);
+					this.addKyber(this.quoteData, this.quote);
+					this.addOasis(this.quoteData, this.quote);
 				}
 				if (this.quote == 'usdc') {
-					this.quoteData.push({
-						price: await this.loadCoinbasePrice(this.quote),
-						source: 'Coinbase Pro'
-					});
+					this.addCoinbase(this.quoteData, this.quote);
 				}
-				this.baseData.push({
-					price: await this.loadCoinbasePrice(this.base),
+				this.addCoinbase(this.baseData, this.base);
+			},
+			addUniswap: async function(source, token) {
+				source.push({
+					price: await this.loadUniswapPrice(token),
+					source: 'Uniswap'
+				});
+			},
+			addKyber: async function(source, token) {
+				source.push({
+					price: await this.loadKyberPrice(token),
+					source: 'Kyber'
+				});
+			},
+			addOasis: async function(source, token) {
+				source.push({
+					price: await this.loadOasisPrice(token),
+					source: 'Oasis'
+				});
+			},
+			addCoinbase: async function(source, token) {
+				source.push({
+					price: await this.loadCoinbasePrice(token),
 					source: 'Coinbase Pro'
 				});
 			},
