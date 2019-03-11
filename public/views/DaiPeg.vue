@@ -7,11 +7,16 @@
 		<div id="prices">
 			<div class="pair-price">
 				<div class="pair">{{ showPair(quote, 'eth') }}</div>
-				<div>{{ quoteSource }}: {{ showPrice(quotePrice) }}</div>
+				<div v-for="data in quoteData">
+					{{ data.source }}: {{ showPrice(data.price) }}
+				</div>
+				<div></div>
 			</div>
 			<div class="pair-price">
 				<div class="pair">{{ showPair(base, 'eth') }}</div>
-				<div>{{ baseSource }}: {{ showPrice(basePrice) }}</div>
+				<div v-for="data in baseData">
+					{{ data.source }}: {{ showPrice(data.price) }}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -30,10 +35,12 @@
 	export default {
 		data() {
 			return {
-				quotePrice: new BigNumber(0),
-				basePrice: new BigNumber(0),
-				quoteSource: '...',
-				baseSource: '...'
+				// quotePrice: new BigNumber(0),
+				// basePrice: new BigNumber(0),
+				// quoteSource: '...',
+				// baseSource: '...'
+				baseData: [],
+				quoteData: []
 			}
 		},
 		mounted: function() {
@@ -41,16 +48,42 @@
 		},
 		watch: {
 			$route: function(to, from) {
-				this.quotePrice = new BigNumber(0);
-				this.basePrice = new BigNumber(0);
-				this.quoteSource = '...';
-				this.baseSource = '...';
+				this.baseData = [];
+				this.quoteData = [];
+				// this.quotePrice = new BigNumber(0);
+				// this.basePrice = new BigNumber(0);
+				// this.quoteSource = '...';
+				// this.baseSource = '...';
 				this.loadPrices();
 			}
 		},
 		computed: {
 			price: function() {
 				return this.basePrice.div(this.quotePrice);
+			},
+			basePrice: function() {
+				const dataSources = this.baseData.length;
+				if (dataSources == 0) {
+					return new BigNumber(0);
+				}
+				var sum = new BigNumber(0);
+				for (var source of this.baseData) {
+					sum = sum.plus(source.price);
+				}
+				const price = sum.div(dataSources);
+				return price;
+			},
+			quotePrice: function() {
+				const dataSources = this.quoteData.length;
+				if (dataSources == 0) {
+					return new BigNumber(0);
+				}
+				var sum = new BigNumber(0);
+				for (var source of this.quoteData) {
+					sum = sum.plus(source.price);
+				}
+				const price = sum.div(dataSources);
+				return price;
 			},
 			base: function() {
 				return this.$route.params.base;
@@ -70,16 +103,28 @@
 				return `${quote.toUpperCase()}/${base.toUpperCase()}`
 			},
 			loadPrices: async function() {
+				var price;
+				var source;
 				if (this.quote == 'dai') {
-					this.quotePrice = await this.loadUniswapPrice(this.quote);
-					this.quoteSource = 'Uniswap';
+					this.quoteData.push({
+						price: await this.loadUniswapPrice(this.quote),
+						source: 'Uniswap'
+					});
+					this.quoteData.push({
+						price: await this.loadKyberPrice(this.quote),
+						source: 'Kyber'
+					});
 				}
 				if (this.quote == 'usdc') {
-					this.quotePrice = await this.loadCoinbasePrice(this.quote);
-					this.quoteSource = 'Coinbase Pro';
+					this.quoteData.push({
+						price: await this.loadCoinbasePrice(this.quote),
+						source: 'Coinbase Pro'
+					});
 				}
-				this.basePrice = await this.loadCoinbasePrice(this.base);
-				this.baseSource = 'Coinbase Pro';
+				this.baseData.push({
+					price: await this.loadCoinbasePrice(this.base),
+					source: 'Coinbase Pro'
+				});
 			},
 			loadUniswapPrice: async function(token) {
 				const daiAddres = '0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359';
@@ -93,17 +138,34 @@
 				return price;
 			},
 			loadKyberPrice: async function(token) {
+				var amount;
+				const one = new BigNumber(1);
+				const ten = new BigNumber(10);
+				const weiMultiplier = ten.pow(18);
+
 				const kyberProxyAddress = '0x818e6fecd516ecc3849daf6845e3ec868087b755';
 				const kyberProxyContract = new ethers.Contract(kyberProxyAddress, kyberProxyAbi, provider);
 				const daiAddres = '0x89d24a6b4ccb1b6faa2625fe562bdd9a23260359';
 				const ethAddress = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-				const rate = await kyberProxyContract.getExpectedRate(ethAddress, daiAddres, 1e6);
-				const priceString = rate.expectedRate.toString();
-				const priceWei = new BigNumber(priceString);
-				const ten = new BigNumber(10);
-				const weiMultiplier = ten.pow(18);
-				const price = priceWei.div(weiMultiplier);
+
+				amount = ethers.utils.parseUnits('1', 18);
+				const ethDaiRate = await kyberProxyContract.getExpectedRate(ethAddress, daiAddres, amount);
+				const ethDaiPriceString = ethDaiRate.expectedRate.toString();
+				const ethDaiPriceWei = new BigNumber(ethDaiPriceString);
+				const ethDaiPrice = ethDaiPriceWei.div(weiMultiplier);
+
+				amount = ethers.utils.parseUnits(ethDaiPrice.toString(), 18);
+				const daiEthRate = await kyberProxyContract.getExpectedRate(daiAddres, ethAddress, amount);
+				const daiEthPriceString = daiEthRate.expectedRate.toString();
+				const daiEthPriceWei = new BigNumber(daiEthPriceString);
+				const daiEthPrice = daiEthPriceWei.div(weiMultiplier);
+				const daiEthRevertedPrice = one.div(daiEthPrice);
+
+				const price = ethDaiPrice.plus(daiEthRevertedPrice).div(2);
 				return price;
+			},
+			loadOasisPrice: async function(token) {
+
 			},
 			loadCoinbasePrice: async function(token) {
 				const endpoint = 'https://api.pro.coinbase.com';
